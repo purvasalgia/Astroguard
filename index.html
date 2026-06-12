@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstroGuard AI - Geo-Spatial Intelligence Platform</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --primary: #00D4FF;
+            --secondary: #7DD3FC;
+            --accent: #4ADE80;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --bg: #020617;
+            --glass: rgba(15, 23, 42, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Ambient Aurora Layer Structuring */
+        .aurora-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            overflow: hidden;
+            background: radial-gradient(circle at 80% 20%, rgba(0, 212, 255, 0.07) 0%, transparent 50%),
+                        radial-gradient(circle at 20% 80%, rgba(74, 222, 128, 0.05) 0%, transparent 50%);
+        }
+
+        .aurora-blob {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(0, 212, 255, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: floatBlob 20s infinite alternate ease-in-out;
+        }
+
+        @keyframes floatBlob {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(100px, 50px) scale(1.2); }
+        }
+
+        /* Premium Interface Blur Panels */
+        .glass-panel {
+            background: var(--glass);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(0, 212, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 212, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 99px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        /* Leaflet Overrides for Dark/Futuristic Mapping Themes */
+        .leaflet-container {
+            background: #020617 !important;
+        }
+        .leaflet-layer,
+        .leaflet-tile-container {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+        }
+        .leaflet-control-zoom {
+            border: none !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+        }
+        .leaflet-control-zoom-in, .leaflet-control-zoom-out {
+            background: var(--glass) !important;
+            backdrop-filter: blur(10px);
+            color: white !important;
+            border: 1px solid var(--glass-border) !important;
+        }
+        .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover {
+            background: rgba(0, 212, 255, 0.2) !important;
+            color: var(--primary) !important;
+        }
+
+        /* Tactical HUD Border Accents */
+        .hud-corner {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-color: var(--primary);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .hc-tl { top: 0; left: 0; border-top: 2px solid; border-left: 2px solid; }
+        .hc-tr { top: 0; right: 0; border-top: 2px solid; border-right: 2px solid; }
+        .hc-bl { bottom: 0; left: 0; border-bottom: 2px solid; border-left: 2px solid; }
+        .hc-br { bottom: 0; right: 0; border-bottom: 2px solid; border-right: 2px solid; }
+
+        .pulse-glow {
+            animation: pulseGlow 2s infinite alternate;
+        }
+        @keyframes pulseGlow {
+            0% { transform: scale(0.95); opacity: 0.5; box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
+            70% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 8px rgba(0, 212, 255, 0); }
+            100% { transform: scale(0.95); opacity: 0.5; box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-4 gap-4">
+
+    <div class="aurora-bg">
+        <div class="aurora-blob" style="top: 10%; left: 15%;"></div>
+        <div class="aurora-blob" style="bottom: 15%; right: 10%; animation-delay: -5s;"></div>
+    </div>
+
+    <header class="glass-panel rounded-2xl px-6 py-3 flex flex-wrap gap-4 items-center justify-between relative overflow-hidden">
+        <div class="absolute inset-0 bg-linear-to-r from-[rgba(0,212,255,0.03)] to-transparent pointer-events-none"></div>
+        
+        <div class="flex items-center gap-3">
+            <div class="p-2.5 bg-cyan-500/10 rounded-xl border border-cyan-500/30 text-[#00D4FF] relative">
+                <i data-lucide="orbit" class="w-6 h-6 animate-spin" style="animation-duration: 20s"></i>
+                <div class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full animate-ping"></div>
+            </div>
+            <div>
+                <h1 class="font-orbitron font-extrabold tracking-wider text-xl bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-cyan-400">ASTROGUARD AI</h1>
+                <p class="text-xs text-slate-400 font-medium tracking-wide uppercase">Geo-Spatial Intelligence Platform</p>
+            </div>
+        </div>
+
+        <div class="hidden md:flex items-center gap-6 text-xs font-orbitron">
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 rounded-lg border border-slate-800">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-glow"></span>
+                <span class="text-slate-300">SATELLITE FEED: <span class="text-emerald-400 font-bold">ONLINE</span></span>
+            </div>
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-900/50 rounded-lg border border-slate-800">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                <span class="text-slate-300">DATA STREAM: <span class="text-cyan-400 font-bold">ACTIVE</span></span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button class="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-[#00D4FF] transition-colors"><i data-lucide="search" class="w-5 h-5"></i></button>
+            <button class="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-[#00D4FF] transition-colors relative">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+                <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+            </button>
+            <button class="p-2 hover:bg-white/5 rounded-lg text-slate-400 hover:text-[#00D4FF] transition-colors"><i data-lucide="settings" class="w-5 h-5"></i></button>
+            <div class="w-[1px] h-6 bg-slate-800 mx-1"></div>
+            <div class="flex items-center gap-2 pl-1">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="User profile" class="w-8 h-8 rounded-full border border-cyan-500/40 object-cover">
+            </div>
+        </div>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-10 gap-4 flex-1 items-stretch">
+        
+        <section class="lg:col-span-7 flex flex-col relative rounded-2xl overflow-hidden min-h-[500px] lg:min-h-0 border border-slate-800/80 shadow-2xl">
+            <div class="hud-corner hc-tl"></div><div class="hud-corner hc-tr"></div>
+            <div class="hud-corner hc-bl"></div><div class="hud-corner hc-br"></div>
+
+            <div id="map" class="w-full h-full absolute inset-0 z-0"></div>
+
+            <div class="absolute top-4 left-4 z-[1000] glass-panel p-3 rounded-xl pointer-events-auto font-orbitron text-[11px] min-w-[160px] flex flex-col gap-2">
+                <div>
+                    <div class="text-[10px] uppercase font-bold tracking-wider text-cyan-400 mb-1">Target Telemetry</div>
+                    <div class="space-y-0.5 text-slate-300">
+                        <div>REG: <span id="telemetry-region" class="text-white font-medium">Global Overview</span></div>
+                        <div>LAT: <span id="telemetry-lat" class="text-white font-medium">0.0000° N</span></div>
+                        <div>LNG: <span id="telemetry-lng" class="text-white font-medium">0.0000° E</span></div>
+                        <div>ZOM: <span id="telemetry-zoom" class="text-emerald-400 font-bold">2</span></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-white/5">
+                    <button id="btn-zoom-in" class="py-1 px-2 bg-cyan-500/10 hover:bg-cyan-500/20 text-[#00D4FF] border border-cyan-500/30 rounded-md font-extrabold text-center transition-all cursor-pointer text-xs">
+                        +
+                    </button>
+                    <button id="btn-zoom-out" class="py-1 px-2 bg-slate-800/40 hover:bg-white/5 text-slate-300 border border-white/5 rounded-md font-extrabold text-center transition-all cursor-pointer text-xs">
+                        -
+                    </button>
+                </div>
+            </div>
+
+            <div class="absolute top-4 right-4 z-[1000] flex flex-col gap-1.5 glass-panel p-2 rounded-xl pointer-events-auto font-orbitron text-xs">
+                <div class="text-[10px] uppercase font-bold tracking-wider text-cyan-400 px-2 pb-1 border-b border-white/5 mb-1">Raster Layer</div>
+                <button id="btn-layer-earth" class="px-3 py-1.5 rounded-lg text-left bg-cyan-500/20 text-[#00D4FF] border border-cyan-500/30 font-medium transition-all">Standard Vector</button>
+                <button id="btn-layer-satellite" class="px-3 py-1.5 rounded-lg text-left text-slate-400 hover:bg-white/5 transition-all">Satellite Base</button>
+                <button id="btn-layer-terrain" class="px-3 py-1.5 rounded-lg text-left text-slate-400 hover:bg-white/5 transition-all">Topography Map</button>
+                <button id="btn-layer-heatmap" class="px-3 py-1.5 rounded-lg text-left text-slate-400 hover:bg-white/5 transition-all flex items-center gap-1.5">NDVI Spectrum <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span></button>
+            </div>
+
+            <div class="absolute bottom-4 left-4 z-[1000] glass-panel px-3 py-1.5 rounded-lg pointer-events-auto font-orbitron text-[10px] text-slate-400 flex gap-4">
+                <div>CURSOR: <span id="cursor-coords" class="text-slate-200 font-medium">0.0000, 0.0000</span></div>
+                <div>ALTITUDE: <span id="cursor-alt" class="text-cyan-400 font-medium">422 km (LEO)</span></div>
+            </div>
+
+            <div class="absolute bottom-4 right-4 z-[1000] glass-panel p-3 rounded-xl pointer-events-auto max-w-[200px] hidden sm:block">
+                <div class="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1.5">
+                    <i data-lucide="cpu" class="w-3.5 h-3.5 text-cyan-400"></i> Localized Analysis
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-center font-orbitron">
+                    <div class="bg-slate-900/40 p-1.5 rounded-lg border border-white/5">
+                        <div class="text-[9px] text-slate-400 uppercase">Cloud Cov</div>
+                        <div class="text-xs font-bold text-slate-200">14.2%</div>
+                    </div>
+                    <div class="bg-slate-900/40 p-1.5 rounded-lg border border-white/5">
+                        <div class="text-[9px] text-slate-400 uppercase">Res Target</div>
+                        <div class="text-xs font-bold text-emerald-400">0.5m</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="lg:col-span-3 flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-130px)] pr-1">
+            
+            <div class="glass-panel rounded-xl p-4 flex flex-col h-[200px]">
+                <div class="flex items-center justify-between mb-2 pb-1 border-b border-white/5">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin text-cyan-400" style="animation-duration: 8s"></i> Geo-Spatial Raster Ingest
+                    </h3>
+                    <span class="text-[10px] font-orbitron text-slate-500">LIVE FEED</span>
+                </div>
+                <div id="ingest-queue" class="overflow-y-auto flex-1 space-y-1.5 text-xs font-mono"></div>
+            </div>
+
+            <div class="glass-panel rounded-xl p-4 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                        <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-cyan-400"></i> Macro Spectrum Metrics
+                    </h3>
+                </div>
+                <div class="w-full h-[160px] relative">
+                    <canvas id="analyticsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-xl p-4 space-y-2.5">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5 pb-1 border-b border-white/5">
+                    <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-cyan-400"></i> Dynamic Planetary Risk Alert Center
+                </h3>
+                
+                <div class="flex items-center justify-between p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg hover:bg-rose-500/15 transition-colors">
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-1.5 bg-rose-500/20 text-rose-400 rounded-md"><i data-lucide="droplets" class="w-4 h-4"></i></div>
+                        <div>
+                            <h4 class="text-xs font-semibold text-slate-200">Severe Inundation Risk</h4>
+                            <p class="text-[10px] text-slate-400">Zone 4-A Delta Region</p>
+                        </div>
+                    </div>
+                    <div class="text-right font-orbitron">
+                        <div class="text-xs font-bold text-rose-400 flex items-center justify-end gap-0.5">CRIT <i data-lucide="trending-up" class="w-3 h-3"></i></div>
+                        <span class="text-[9px] text-slate-500">92.4% Probability</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg hover:bg-amber-500/15 transition-colors">
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-1.5 bg-amber-500/20 text-amber-400 rounded-md"><i data-lucide="flame" class="w-4 h-4"></i></div>
+                        <div>
+                            <h4 class="text-xs font-semibold text-slate-200">Thermal Canopy Variant</h4>
+                            <p class="text-[10px] text-slate-400">Sub-Saharan Coordinates</p>
+                        </div>
+                    </div>
+                    <div class="text-right font-orbitron">
+                        <div class="text-xs font-bold text-amber-400 flex items-center justify-end gap-0.5">WARN <i data-lucide="trending-up" class="w-3 h-3"></i></div>
+                        <span class="text-[9px] text-slate-500">68.1% Intensity</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/15 transition-colors">
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-1.5 bg-emerald-500/20 text-emerald-400 rounded-md"><i data-lucide="wind" class="w-4 h-4"></i></div>
+                        <div>
+                            <h4 class="text-xs font-semibold text-slate-200">Atmospheric Density</h4>
+                            <p class="text-[10px] text-slate-400">Metropolitan Air Columns</p>
+                        </div>
+                    </div>
+                    <div class="text-right font-orbitron">
+                        <div class="text-xs font-bold text-emerald-400 flex items-center justify-end gap-0.5">STBL <i data-lucide="trending-down" class="w-3 h-3"></i></div>
+                        <span class="text-[9px] text-slate-500">AQI 42 (Nominal)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-xl p-4 flex items-center justify-between bg-gradient-to-br from-slate-900/60 to-slate-950/60">
+                <div class="space-y-1">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 font-orbitron">System Health Matrix</h3>
+                    <p class="text-xs text-emerald-400 font-medium flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Fully Operational
+                    </p>
+                    <p class="text-[10px] text-slate-500">All Nodes & GPU Clusters Green</p>
+                </div>
+                <div class="relative w-16 h-16 flex items-center justify-center font-orbitron">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                        <path class="text-slate-800" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="text-cyan-400 transition-all duration-1000 ease-out" stroke-dasharray="98, 100" stroke-width="3" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    </svg>
+                    <div class="absolute text-center">
+                        <span class="text-xs font-extrabold text-white">98%</span>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
