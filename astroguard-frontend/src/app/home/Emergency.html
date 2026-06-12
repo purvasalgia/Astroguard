@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstroGuard AI - Emergency Command</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        /* CSS VARIABLES - Red Emergency Theme with Original Text Colors */
+        :root {
+            --bg-monitor: #0a0505;
+            --bg-panel: #140a0a;
+            --bg-panel-header: #1f0f0f;
+            --border-primary: #4a1a1a;
+            --border-highlight: #7a2020;
+            
+            --text-title: #7ee2d7;
+            --text-label: #5cb3aa;
+            --text-value: #e2e8f0;
+            --text-warning: #d69e2e;
+            --text-muted: #8c6b6b;
+            
+            --theme-red: #ff3333;
+            --theme-orange: #ff5555;
+            
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: "Consolas", "Courier New", monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 20px;
+            font-family: var(--font-sans);
+            color: var(--text-value);
+            overflow-y: auto;
+        }
+
+        /* MAIN DASHBOARD CONTAINER */
+        .dashboard {
+            background-color: var(--bg-monitor);
+            width: 100%;
+            max-width: 1400px;
+            border: 1px solid #661111;
+            border-radius: 6px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 20px 50px rgba(200, 0, 0, 0.3);
+        }
+
+        /* HEADER */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        .top-header h1 {
+            font-size: 1.1rem;
+            color: var(--text-title);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 15px;
+            color: var(--text-warning);
+            font-size: 1.2rem;
+        }
+
+        /* INTERACTIVE BUTTON STYLES */
+        .action-btn {
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            display: inline-block;
+            user-select: none;
+        }
+
+        .action-btn:hover {
+            opacity: 1;
+            color: #ff8080;
+        }
+
+        .action-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* MAIN MAP AREA */
+        .map-container {
+            width: 100%;
+            height: 475px; /* reduced by 5% to expose bottom content */
+            max-height: calc(100vh - 260px);
+            border: 1px solid var(--border-highlight);
+            border-radius: 4px;
+            position: relative;
+            background-color: #000;
+            overflow: hidden;
+        }
+
+        #real-map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* CUSTOM MAP UI OVERLAYS */
+        .map-ui-overlay {
+            position: absolute;
+            z-index: 1000; /* Above Leaflet map */
+            pointer-events: none; /* Let clicks pass through to map where no UI exists */
+        }
+
+        .map-ui-overlay > * {
+            pointer-events: auto; /* Re-enable clicks on the actual UI elements */
+        }
+
+        /* Top Left Alert Tag */
+        .top-left-alert {
+            top: 15px;
+            left: 15px;
+            background: rgba(20, 5, 5, 0.85);
+            border: 1px solid var(--border-highlight);
+            color: var(--text-title);
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Top Right Icons */
+        .top-right-icons {
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            background: rgba(20, 5, 5, 0.85);
+            border: 1px solid var(--border-highlight);
+            padding: 6px 10px;
+            border-radius: 4px;
+            color: var(--text-label);
+        }
+
+        /* Bottom Left Tag */
+        .bottom-left-tag {
+            bottom: 15px;
+            left: 15px;
+            background: rgba(20, 5, 5, 0.85);
+            border: 1px solid var(--border-highlight);
+            color: var(--text-label);
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+        }
+
+        /* Bottom Right Tag */
+        .bottom-right-tag {
+            bottom: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .tag-pill {
+            background: rgba(20, 5, 5, 0.85);
+            border: 1px solid var(--border-highlight);
+            color: var(--text-label);
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+        }
+
+        /* Custom Zoom Controls (Left Side) */
+        .custom-zoom-controls {
+            top: 50%;
+            left: 15px;
+            transform: translateY(-50%);
+            background: rgba(20, 5, 5, 0.85);
+            border: 1px solid var(--border-highlight);
+            display: flex;
+            flex-direction: column;
+            width: 30px;
+            align-items: center;
+            border-radius: 4px;
+            padding: 5px 0;
+        }
+
+        .custom-zoom-controls .zoom-btn {
+            color: var(--text-title);
+            font-size: 18px;
+            padding: 5px 0;
+            width: 100%;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .custom-zoom-controls .zoom-slider {
+            height: 100px;
+            width: 4px;
+            background: var(--border-primary);
+            margin: 10px 0;
+            position: relative;
+            border-radius: 2px;
+        }
+
+        .custom-zoom-controls .zoom-thumb {
+            width: 12px;
+            height: 6px;
+            background: var(--theme-orange);
+            position: absolute;
+            top: 50%;
+            left: -4px;
+            border-radius: 2px;
+        }
+
+        /* Leaflet Overrides for Custom Styling */
+        .leaflet-popup-content-wrapper {
+            background: rgba(20, 5, 5, 0.95);
+            border: 1px solid var(--text-warning);
+            color: var(--text-value);
+            border-radius: 4px;
+            font-family: var(--font-sans);
+        }
+        .leaflet-popup-tip {
+            background: rgba(20, 5, 5, 0.95);
+            border: 1px solid var(--text-warning);
+        }
+        .custom-tooltip-content {
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        .custom-tooltip-title {
+            color: var(--text-warning);
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .custom-x-marker {
+            color: var(--text-warning);
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 24px;
+            text-shadow: 0 0 5px #000;
+        }
+
+        /* LOG PANELS GRID */
+        .logs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .panel {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-primary);
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            color: var(--text-label);
+            font-size: 0.85rem;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-primary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .panel-content {
+            padding: 12px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            height: 120px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .log-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            min-width: 100px;
+        }
+
+        .log-tag-alert { color: var(--text-warning); }
+        .log-tag-sync { color: #4da6ff; }
+        .log-tag-status { color: #4dff88; }
+        .log-tag-action { color: var(--text-value); }
+
+        /* BOTTOM BAR */
+        .bottom-bar {
+            background: var(--bg-panel-header);
+            border: 1px solid var(--border-primary);
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            border-radius: 4px;
+        }
+
+        .bottom-text {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .critical-badge {
+            color: var(--bg-monitor);
+            background: var(--text-warning);
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+
+        .progress-container {
+            width: 150px;
+            height: 10px;
+            background: #000;
+            border: 1px solid var(--border-primary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 85%;
+            background: linear-gradient(90deg, var(--theme-red), var(--theme-orange));
+        }
+
+        .arrows {
+            color: var(--text-label);
+            letter-spacing: -2px;
+        }
+
+        /* TOAST NOTIFICATION SYSTEM */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: var(--bg-panel-header);
+            border: 1px solid var(--border-highlight);
+            color: var(--text-value);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 10px 20px;
+            border-radius: 4px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.8);
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .logs-grid { grid-template-columns: 1fr; }
+            .map-container { height: 400px; }
+            .log-time { min-width: 80px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast-container"></div>
+
+    <div class="dashboard">
+        <div class="top-header">
+            <h1>ASTROGUARD AI: EMERGENCY COMMAND & GOVERNANCE TERMINAL</h1>
+            <div class="header-icons">
+                <span class="action-btn" data-action="global_alert">⚠️</span>
+                <span class="action-btn" data-action="open_settings">⚙️</span>
+            </div>
+        </div>
+
+        <div class="map-container">
+            
+            <div id="real-map"></div>
+
+            <div class="map-ui-overlay top-left-alert">
+                <span style="color:var(--text-warning)">⚠️</span> Emergency Alert
+            </div>
+
+            <div class="map-ui-overlay top-right-icons">
+                <span class="action-btn" data-action="toggle_map_vision">👁️</span>
+                <span class="action-btn" data-action="fullscreen_map">⛶</span>
+            </div>
+
+            <div class="map-ui-overlay bottom-left-tag">
+                <span style="color:var(--text-warning)">⚠️</span> 🎯 Emergency alert ···
+            </div>
+
+            <div class="map-ui-overlay bottom-right-tag">
+                <div class="tag-pill">Generated map</div>
+                <div class="tag-pill action-btn" data-action="view_critical_details" style="color:var(--text-warning); border-color:var(--text-warning)">⚠️</div>
+            </div>
+
+            <div class="map-ui-overlay custom-zoom-controls">
+                <div class="zoom-btn action-btn" data-action="map_zoom_in">+</div>
+                <div class="zoom-slider"><div class="zoom-thumb" id="custom-zoom-thumb"></div></div>
+                <div class="zoom-btn action-btn" data-action="map_zoom_out">-</div>
+            </div>
+
+        </div>
+
+        <div class="logs-grid">
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <span>ORCHESTRATION QUEUE</span>
+                    <span class="action-btn" data-action="expand_orchestration">⌃</span>
+                </div>
+                <div class="panel-content">
+                    <div class="log-row">
+                        <span class="log-time">10:39 3m ago</span>
+                        <span><span class="log-tag-alert">[ALERT]</span> Astro Agent detected variable star anomaly</span>
+                    </div>
+                    <div class="log-row">
+                        <span class="log-time">12:24 3m ago</span>
+                        <span><span class="log-tag-sync">[SYNC]</span> Geo-Spatial Agent prioritized Earth disaster scan</span>
+                    </div>
+                    <div class="log-row">
+                        <span class="log-time">12:27 3m ago</span>
+                        <span><span class="log-tag-status">[STATUS]</span> Disasters Agent confirmed flood risk</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <span>AUTONOMOUS INTERDICTION ACTIONS</span>
+                    <span class="action-btn" data-action="expand_actions">⌃</span>
+                </div>
+                <div class="panel-content">
+                    <div class="log-row">
+                        <span><span class="log-tag-action">[AUTONOMOUS ACTION]</span> Marked area imagery generated for Chennai Zone</span>
+                    </div>
+                    <div class="log-row">
+                        <span><span class="log-tag-action">[ACTION]</span> Situational report generated and ready for push</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="bottom-bar">
+            <div class="action-btn" data-action="toggle_system_menu" style="color: var(--text-label); font-size: 1.2rem;">☰</div>
+            <div class="action-btn" data-action="view_api_status" style="color: var(--text-muted);">@lwnmjd</div>
+            <div class="bottom-text">
+                <span class="critical-badge">[CRITICAL]</span>
+                <span style="color: var(--text-title)">Situation report generated autonomously and queued for immediate dispatch</span>
+            </div>
+            <div class="progress-container">
+                <div class="progress-fill"></div>
+            </div>
+            <div class="arrows action-btn" data-action="force_dispatch">>></div>
+        </div>
+
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="Emergency.js"></script>
+</body>
+</html>

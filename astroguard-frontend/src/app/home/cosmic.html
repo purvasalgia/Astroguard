@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASTROGUARD AI - COSMIC SOURCE SUMMARY</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root {
+            --bg: #050d12;
+            --card: rgba(8, 22, 29, 0.88);
+            --cyan: #59e9ff;
+            --green: #6cff84;
+            --yellow: #ffd84a;
+            --border: rgba(80, 255, 180, 0.18);
+            --text-main: #e0f2f1;
+            --text-muted: #8a9ca8;
+            --neon-shadow: 0 0 15px rgba(89, 233, 255, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(89, 233, 255, 0.04) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(108, 255, 132, 0.03) 0%, transparent 50%);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .dashboard-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: 100%;
+            max-width: 1800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+            padding-bottom: 20px;
+        }
+
+        /* HEADER */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background: var(--card);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            flex-shrink: 0;
+            margin-bottom: 10px;
+        }
+
+        .header-title {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--cyan);
+            font-weight: 700;
+            letter-spacing: 2px;
+            font-size: 1.2rem;
+            text-shadow: 0 0 10px rgba(89, 233, 255, 0.3);
+        }
+
+        .header-subtitle {
+            font-family: 'Rajdhani', sans-serif;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            font-size: 1.1rem;
+        }
+
+        /* MAIN LAYOUT */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 72% 28%;
+            gap: 15px;
+            flex-grow: 1;
+            height: auto;
+            min-height: 800px;
+        }
+
+        .left-col {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: auto;
+        }
+
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-height: auto;
+        }
+
+        /* PANELS */
+        .panel {
+            background: var(--card);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            min-height: 200px;
+        }
+
+        .panel-header {
+            font-family: 'Rajdhani', sans-serif;
+            color: var(--cyan);
+            text-transform: uppercase;
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-header-right-icons {
+            display: flex;
+            gap: 10px;
+            color: var(--text-muted);
+            opacity: 0.7;
+        }
+
+        /* ASTRONOMY DATA MONITOR */
+        .astronomy-panel {
+            min-height: 450px;
+        }
+
+        .map-container {
+            flex-grow: 1;
+            min-height: 400px;
+            border: 1px solid rgba(89, 233, 255, 0.2);
+            border-radius: 4px;
+            position: relative;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #skyMap {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 1;
+        }
+
+        .custom-zoom-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(8, 22, 29, 0.7);
+            border: 1px solid var(--cyan);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 5px;
+            width: 30px;
+            box-shadow: var(--neon-shadow);
+            backdrop-filter: blur(5px);
+        }
+
+        .custom-zoom-bar i {
+            color: var(--cyan);
+            font-size: 14px;
+            cursor: pointer;
+            padding: 5px 0;
+            transition: 0.3s;
+        }
+
+        .custom-zoom-bar i:hover {
+            color: #fff;
+            text-shadow: 0 0 8px var(--cyan);
+        }
+
+        .zoom-track {
+            height: 80px;
+            width: 2px;
+            background: rgba(89, 233, 255, 0.3);
+            margin: 5px 0;
+            position: relative;
+        }
+
+        .zoom-thumb {
+            width: 10px;
+            height: 4px;
+            background: var(--cyan);
+            position: absolute;
+            top: 30%;
+            left: -4px;
+            border-radius: 2px;
+            box-shadow: 0 0 5px var(--cyan);
+        }
+
+        /* LIGHT CURVE GRAPH */
+        .light-curve-panel {
+            min-height: 300px;
+        }
+
+        .chart-wrapper {
+            flex-grow: 1;
+            position: relative;
+            width: 100%;
+            min-height: 250px;
+            display: flex;
+            align-items: stretch;
+        }
+
+        .chart-wrapper canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* RIGHT SIDEBAR TABLES & ACTIONS */
+        .status-panel {
+            min-height: 280px;
+            overflow-y: auto;
+        }
+
+        .actions-panel {
+            min-height: 280px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .sub-heading {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(80, 255, 180, 0.1);
+            padding-bottom: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.05rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 8px 5px;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid rgba(80, 255, 180, 0.15);
+        }
+
+        td {
+            padding: 10px 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+        }
+
+        .text-green { color: var(--green); text-shadow: 0 0 8px rgba(108, 255, 132, 0.3); }
+
+        .action-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .action-item {
+            border: 1px solid rgba(80, 255, 180, 0.1);
+            border-radius: 4px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .action-item::before {
+            content: '';
+            position: absolute;
+            left: -1px;
+            top: 20%;
+            height: 60%;
+            width: 2px;
+            background: var(--text-muted);
+            opacity: 0.5;
+        }
+
+        .action-item.active {
+            border: 1px solid var(--green);
+            background: rgba(108, 255, 132, 0.05);
+            box-shadow: inset 0 0 15px rgba(108, 255, 132, 0.05);
+        }
+
+        .action-item.active::before {
+            background: var(--green);
+            opacity: 1;
+            box-shadow: 0 0 8px var(--green);
+        }
+
+        .action-role {
+            font-family: 'Rajdhani', sans-serif;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+
+        .action-item.active .action-role {
+            color: var(--green);
+        }
+
+        .action-desc {
+            font-size: 0.85rem;
+            line-height: 1.4;
+            color: var(--text-main);
+        }
+
+        .event-tag { color: var(--cyan); }
+        .action-tag { color: var(--yellow); }
+        .alert-tag { color: var(--green); font-weight: 600; }
+
+        /* FLOATING TELESCOPES */
+        .floating-widget {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(8, 22, 29, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(89, 233, 255, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--cyan);
+            box-shadow: 0 0 20px rgba(89, 233, 255, 0.15);
+            z-index: 100;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .floating-widget i {
+            width: 24px;
+            height: 24px;
+            stroke-width: 1.5;
+        }
+
+        .widget-1 { top: 35%; right: 26%; animation-delay: 0s; }
+        .widget-2 { bottom: 15%; left: 30%; animation-delay: 2s; border-color: rgba(255, 255, 255, 0.2); color: #fff;}
+        .widget-3 { bottom: 30%; right: 25%; animation-delay: 4s; border-color: rgba(108, 255, 132, 0.4); color: var(--green); width: 40px; height: 40px;}
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-15px) scale(1.05); }
+        }
+
+        /* CUSTOM LEAFLET STYLES */
+        .leaflet-container { background: #000; }
+        .target-box {
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; box-shadow: 0 0 10px var(--cyan); }
+            100% { opacity: 0.6; }
+        }
+        .leaflet-control-attribution { display: none !important; }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(89, 233, 255, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(89, 233, 255, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(89, 233, 255, 0.6);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1200px) {
+            .main-grid { grid-template-columns: 1fr; height: auto; min-height: auto; }
+            body { min-height: 100vh; overflow-y: auto; }
+            .astronomy-panel { min-height: 400px; }
+            .light-curve-panel { min-height: 280px; }
+            .floating-widget { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="floating-widget widget-1"><i data-lucide="telescope"></i></div>
+    <div class="floating-widget widget-2"><i data-lucide="telescope"></i></div>
+    <div class="floating-widget widget-3"><i data-lucide="sparkles"></i></div>
+
+    <div class="dashboard-container">
+        <header>
+            <div class="header-title">ASTROGUARD AI</div>
+            <div class="header-subtitle">COSMIC SOURCE SUMMARY</div>
+        </header>
+
+        <div class="main-grid">
+            
+            <div class="left-col">
+                <div class="panel astronomy-panel">
+                    <div class="panel-header">
+                        ASTRONOMY DATA MONITOR
+                        <div class="panel-header-right-icons">
+                            <i data-lucide="eye" style="width: 16px;"></i>
+                            <i data-lucide="crosshair" style="width: 16px;"></i>
+                        </div>
+                    </div>
+                    <div class="map-container">
+                        <div class="custom-zoom-bar">
+                            <i data-lucide="plus"></i>
+                            <div class="zoom-track"><div class="zoom-thumb"></div></div>
+                            <i data-lucide="minus"></i>
+                        </div>
+                        <div id="skyMap"></div>
+                    </div>
+                </div>
+
+                <div class="panel light-curve-panel">
+                    <div class="panel-header" style="font-size: 0.95rem; font-family: 'Inter', sans-serif; text-transform: none; color: var(--text-muted); margin-bottom: 5px;">
+                        Light curve
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="lightCurveChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-col">
+                <div class="panel status-panel">
+                    <div class="panel-header">AGENT STATUS & DECISION LOG</div>
+                    <div class="sub-heading">LATEST DETECTED CANDIDATES</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>TYPE</th>
+                                <th>STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>GC-001</td>
+                                <td>Nova</td>
+                                <td class="text-green">Confirmed</td>
+                            </tr>
+                            <tr>
+                                <td>GC-002</td>
+                                <td>Transit</td>
+                                <td>In Progress</td>
+                            </tr>
+                            <tr>
+                                <td>GC-003</td>
+                                <td>Nova</td>
+                                <td class="text-green">Confirmed</td>
+                            </tr>
+                            <tr>
+                                <td>GC-004</td>
+                                <td>Transit</td>
+                                <td>In Progress</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="panel actions-panel">
+                    <div class="panel-header">NOVA AGENT ACTIONS</div>
+                    <div class="action-list">
+                        
+                        <div class="action-item">
+                            <div class="action-role">Analyzer:</div>
+                            <div class="action-desc">
+                                <span class="event-tag">[EVENT]</span> Candidate confirmed at X,Y
+                            </div>
+                        </div>
+
+                        <div class="action-item">
+                            <div class="action-role">Reporter:</div>
+                            <div class="action-desc">
+                                <span class="action-tag">[ACTION]</span> Visualization code generated
+                            </div>
+                        </div>
+
+                        <div class="action-item active">
+                            <div class="action-role">Governor:</div>
+                            <div class="action-desc">
+                                <span class="alert-tag">[ALERT]</span> Queue prioritized
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+
+    <script>
+        // Initialize Leaflet Sky Map
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize map centered on sky coordinates
+            const map = L.map('skyMap', {
+                center: [0, 0],
+                zoom: 3,
+                zoomControl: false,
+                attributionControl: false,
+                dragging: true,
+                keyboard: true
+            });
+
+            // Add OpenStreetMap tiles with cyberwave filter
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '',
+                maxZoom: 19,
+                subdomains: 'abcd'
+            }).addTo(map);
+
+            // Add some observable markers (astronomical sources)
+            const sources = [
+                { lat: 15, lng: 30, name: 'Nova GC-001', type: 'Nova' },
+                { lat: -20, lng: -40, name: 'Transit Zone', type: 'Transit' },
+                { lat: 45, lng: 80, name: 'GC-003', type: 'Nova' },
+                { lat: -35, lng: 140, name: 'Observation Point', type: 'Observatory' }
+            ];
+
+            sources.forEach(source => {
+                const color = source.type === 'Nova' ? '#59e9ff' : '#6cff84';
+                L.circleMarker([source.lat, source.lng], {
+                    radius: 8,
+                    fillColor: color,
+                    color: color,
+                    weight: 2,
+                    opacity: 0.8,
+                    fillOpacity: 0.6
+                }).addTo(map).bindPopup(`<div style="color:#e0f2f1; font-size:0.9rem; padding:8px;"><strong>${source.name}</strong><br>${source.type}</div>`);
+            });
+
+            // Initialize Light Curve Chart
+            const ctx = document.getElementById('lightCurveChart');
+            if (ctx) {
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({length: 30}, (_, i) => `Day ${i+1}`),
+                        datasets: [{
+                            label: 'Light Curve (Magnitude)',
+                            data: [
+                                2.1, 2.3, 2.5, 3.2, 3.8, 4.5, 5.1, 5.8, 6.2, 6.8,
+                                7.1, 7.5, 7.8, 7.9, 7.8, 7.5, 7.2, 6.8, 6.3, 5.8,
+                                5.2, 4.6, 4.0, 3.5, 3.0, 2.6, 2.3, 2.1, 1.9, 1.8
+                            ],
+                            borderColor: '#59e9ff',
+                            backgroundColor: 'rgba(89, 233, 255, 0.1)',
+                            borderWidth: 2.5,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#59e9ff',
+                            pointBorderColor: '#6cff84',
+                            pointBorderWidth: 1,
+                            tension: 0.3,
+                            fill: true,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    color: '#e0f2f1',
+                                    font: { family: "'Rajdhani', sans-serif", size: 12 },
+                                    usePointStyle: true,
+                                    padding: 20
+                                }
+                            },
+                            filler: { propagate: true }
+                        },
+                        scales: {
+                            y: {
+                                title: { display: true, text: 'Magnitude', color: '#8a9ca8' },
+                                ticks: { color: '#8a9ca8', font: { size: 11 } },
+                                grid: { color: 'rgba(89, 233, 255, 0.1)', drawBorder: false },
+                                beginAtZero: false
+                            },
+                            x: {
+                                title: { display: true, text: 'Time (Days)', color: '#8a9ca8' },
+                                ticks: { color: '#8a9ca8', font: { size: 11 } },
+                                grid: { color: 'rgba(89, 233, 255, 0.05)', drawBorder: false }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Apply Lucide icons
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        });
+    </script>
+</body>
+</html>
